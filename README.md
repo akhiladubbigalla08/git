@@ -1,2 +1,2 @@
 # git
-new coding
+it is an resume builder app
