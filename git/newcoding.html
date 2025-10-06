@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Resume Builder — Single File</title>
+  <style>
+    :root{--accent:#2b6cb0;--muted:#6b7280;--bg:#f7fafc}
+    body{font-family:Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin:0; background:var(--bg); color:#111}
+    .app{max-width:1100px;margin:28px auto;padding:18px;display:grid;grid-template-columns:380px 1fr;gap:20px}
+    .card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 6px 18px rgba(16,24,40,0.06)}
+    h2{margin:0 0 12px 0;font-size:18px}
+    label{display:block;font-size:13px;color:var(--muted);margin-top:10px}
+    input[type=text], input[type=email], input[type=tel], textarea, select{width:100%;padding:8px 10px;border:1px solid #e6eef6;border-radius:8px;margin-top:6px;font-size:14px}
+    textarea{min-height:64px;resize:vertical}
+    .small{font-size:13px;color:var(--muted)}
+    .row{display:flex;gap:8px}
+    .btn{display:inline-block;padding:8px 12px;border-radius:8px;background:var(--accent);color:white;text-decoration:none;border:none;cursor:pointer}
+    .btn.ghost{background:transparent;border:1px solid #e2e8f0;color:inherit}
+    .controls{display:flex;gap:8px;margin-top:12px}
+    .list{margin-top:8px}
+    .item{border:1px dashed #e6eef6;padding:10px;border-radius:10px;margin-bottom:8px}
+
+    /* Preview area */
+    .previewWrap{padding:18px;overflow:auto}
+    .resume{max-width:800px;margin:0 auto;background:white;padding:28px;border-radius:8px}
+    .name{font-size:28px;font-weight:700}
+    .title{color:var(--muted);margin-top:4px}
+    .section{margin-top:14px}
+    .section h3{margin:0;font-size:15px;border-bottom:1px solid #eee;padding-bottom:6px}
+    .listItem{margin-top:8px}
+    .meta{font-size:13px;color:var(--muted)}
+
+    /* print friendly: hide form when printing */
+    @media print{
+      body{background:white}
+      .app > :not(.previewWrap){display:none}
+      .previewWrap{box-shadow:none}
+      .resume{box-shadow:none}
+    }
+
+    /* responsive */
+    @media (max-width:900px){.app{grid-template-columns:1fr}.previewWrap{order:2}.card{margin-bottom:12px}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="card" id="formCard">
+      <h2>Resume Builder</h2>
+      <div class="small">Fill the form on left — live preview on right. Use <strong>Download PDF</strong> to save.</div>
+
+      <label>Full name<input id="fullName" type="text" placeholder="Akhila Dubbigalla"/></label>
+      <label>Job title<input id="jobTitle" type="text" placeholder="Software Engineer"/></label>
+      <label>Email<input id="email" type="email" placeholder="you@example.com"/></label>
+      <label>Phone<input id="phone" type="tel" placeholder="+91 98765 43210"/></label>
+      <label>Summary<textarea id="summary" placeholder="Short professional summary"></textarea></label>
+
+      <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+        <h3 style="margin:0;font-size:14px">Experience</h3>
+        <button class="btn" id="addExp">+ Add</button>
+      </div>
+      <div id="expList" class="list"></div>
+
+      <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+        <h3 style="margin:0;font-size:14px">Education</h3>
+        <button class="btn" id="addEdu">+ Add</button>
+      </div>
+      <div id="eduList" class="list"></div>
+
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn" id="downloadPdf">Download PDF</button>
+        <button class="btn" id="exportJson">Export JSON</button>
+        <button class="btn ghost" id="clearAll">Clear</button>
+      </div>
+    </div>
+
+    <div class="card previewWrap">
+      <h2 style="margin-bottom:14px">Live Preview</h2>
+      <div id="previewArea" class="resume" contenteditable="false">
+        <div class="name" id="p_name">Full Name</div>
+        <div class="title" id="p_title">Professional Title</div>
+        <div style="margin-top:8px"><span id="p_email" class="meta">email@example.com</span> • <span id="p_phone" class="meta">+91 98765 43210</span></div>
+        <div class="section">
+          <h3>Summary</h3>
+          <div id="p_summary" class="listItem small">A short summary about you.</div>
+        </div>
+        <div class="section">
+          <h3>Experience</h3>
+          <div id="p_experience"></div>
+        </div>
+        <div class="section">
+          <h3>Education</h3>
+          <div id="p_education"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px; font-size:13px; color:var(--muted)">Tip: Use <strong>Download PDF</strong> which triggers the browser print dialog. Choose <em>Save as PDF</em>.</div>
+    </div>
+  </div>
+
+  <template id="expTemplate">
+    <div class="item expItem">
+      <label>Company<input class="inp company" type="text" placeholder="Company name"></label>
+      <label>Role<input class="inp role" type="text" placeholder="Senior Developer"></label>
+      <label>Period<input class="inp period" type="text" placeholder="2021 - Present"></label>
+      <label>Description<textarea class="inp desc" placeholder="What you did"></textarea></label>
+      <div style="display:flex;gap:8px;margin-top:8px"><button class="btn saveBtn">Save</button><button class="btn ghost delBtn">Delete</button></div>
+    </div>
+  </template>
+
+  <template id="eduTemplate">
+    <div class="item eduItem">
+      <label>Institution<input class="inp inst" type="text" placeholder="University"></label>
+      <label>Degree<input class="inp degree" type="text" placeholder="B.Tech — Computer Science"></label>
+      <label>Years<input class="inp years" type="text" placeholder="2016 - 2020"></label>
+      <div style="display:flex;gap:8px;margin-top:8px"><button class="btn saveBtn">Save</button><button class="btn ghost delBtn">Delete</button></div>
+    </div>
+  </template>
+
+  <script>
+    // Simple single-file resume builder
+    const state = {experiences: [], education: []};
+
+    const q = sel => document.querySelector(sel);
+    const qAll = sel => Array.from(document.querySelectorAll(sel));
+
+    // fields
+    ['fullName','jobTitle','email','phone','summary'].forEach(id => {
+      const el = q('#'+id);
+      el.addEventListener('input', updatePreview);
+    });
+
+    function updatePreview(){
+      q('#p_name').textContent = q('#fullName').value || 'Full Name';
+      q('#p_title').textContent = q('#jobTitle').value || 'Professional Title';
+      q('#p_email').textContent = q('#email').value || 'email@example.com';
+      q('#p_phone').textContent = q('#phone').value || '+91 98765 43210';
+      q('#p_summary').textContent = q('#summary').value || 'A short summary about you.';
+      renderLists();
+    }
+
+    function renderLists(){
+      const expRoot = q('#p_experience'); expRoot.innerHTML='';
+      state.experiences.forEach((e,i)=>{
+        const div=document.createElement('div'); div.className='listItem';
+        div.innerHTML = `<strong>${e.role || 'Role'}</strong> — <span class="meta">${e.company || 'Company'}</span><div class="meta">${e.period || ''}</div><div style="margin-top:6px">${e.desc || ''}</div>`;
+        expRoot.appendChild(div);
+      });
+      const eduRoot = q('#p_education'); eduRoot.innerHTML='';
+      state.education.forEach((ed,i)=>{
+        const div=document.createElement('div'); div.className='listItem';
+        div.innerHTML = `<strong>${ed.degree || 'Degree'}</strong> — <span class="meta">${ed.inst || 'Institution'}</span><div class="meta">${ed.years || ''}</div>`;
+        eduRoot.appendChild(div);
+      });
+    }
+
+    // Add experience
+    q('#addExp').addEventListener('click', ()=>{
+      const tpl = q('#expTemplate').content.cloneNode(true);
+      const el = tpl.querySelector('.expItem');
+      const saveBtn = el.querySelector('.saveBtn');
+      const delBtn = el.querySelector('.delBtn');
+      saveBtn.addEventListener('click', ()=>{
+        const company = el.querySelector('.company').value.trim();
+        const role = el.querySelector('.role').value.trim();
+        const period = el.querySelector('.period').value.trim();
+        const desc = el.querySelector('.desc').value.trim();
+        state.experiences.push({company,role,period,desc});
+        el.remove(); updatePreview();
+      });
+      delBtn.addEventListener('click', ()=>{el.remove()});
+      q('#expList').appendChild(el);
+    });
+
+    // Add education
+    q('#addEdu').addEventListener('click', ()=>{
+      const tpl = q('#eduTemplate').content.cloneNode(true);
+      const el = tpl.querySelector('.eduItem');
+      const saveBtn = el.querySelector('.saveBtn');
+      const delBtn = el.querySelector('.delBtn');
+      saveBtn.addEventListener('click', ()=>{
+        const inst = el.querySelector('.inst').value.trim();
+        const degree = el.querySelector('.degree').value.trim();
+        const years = el.querySelector('.years').value.trim();
+        state.education.push({inst,degree,years});
+        el.remove(); updatePreview();
+      });
+      delBtn.addEventListener('click', ()=>{el.remove()});
+      q('#eduList').appendChild(el);
+    });
+
+    // Download PDF (use print)
+    q('#downloadPdf').addEventListener('click', ()=>{
+      // make sure preview is updated
+      updatePreview();
+      // open print dialog - user can choose Save as PDF
+      window.print();
+    });
+
+    // Export JSON
+    q('#exportJson').addEventListener('click', ()=>{
+      updatePreview();
+      const data = collectData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download = (data.fullName || 'resume') + '.json';
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    // Clear
+    q('#clearAll').addEventListener('click', ()=>{
+      if(!confirm('Clear all fields and preview?')) return;
+      ['fullName','jobTitle','email','phone','summary'].forEach(id=>q('#'+id).value='');
+      state.experiences = []; state.education = []; q('#expList').innerHTML=''; q('#eduList').innerHTML=''; updatePreview();
+    });
+
+    function collectData(){
+      return {
+        fullName: q('#fullName').value,
+        jobTitle: q('#jobTitle').value,
+        email: q('#email').value,
+        phone: q('#phone').value,
+        summary: q('#summary').value,
+        experiences: state.experiences,
+        education: state.education,
+        generatedAt: new Date().toISOString()
+      }
+    }
+
+    // initial
+    updatePreview();
+
+    // Bonus: keyboard shortcut Cmd/Ctrl+S to export JSON
+    window.addEventListener('keydown', (e)=>{
+      if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='s'){
+        e.preventDefault(); q('#exportJson').click();
+      }
+    });
+  </script>
+</body>
+</html>
